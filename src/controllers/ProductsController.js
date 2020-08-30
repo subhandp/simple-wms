@@ -1,6 +1,6 @@
 require('dotenv').config();
 const { Users, Products } = require("../models");
-
+const { uploadCloudinary } = require("./Upload");
 const response = {
     message: "",
     status: "",

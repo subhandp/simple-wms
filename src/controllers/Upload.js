@@ -7,7 +7,9 @@ const datauri = require('datauri/parser');
 const mydatauri = new datauri();
 const dataUri = req => mydatauri.format(path.extname(req.file.originalname), req.file.buffer);
 
+
 const storage = multer.memoryStorage();
+//using in middleware
 const multerUploads = multer({ storage }).single('image');
 
 

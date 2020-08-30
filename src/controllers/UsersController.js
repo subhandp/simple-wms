@@ -6,7 +6,6 @@ const response = {
     status: "",
 };
 
-
 class UsersController {
     static async getUsers(req, res) {
         try {
