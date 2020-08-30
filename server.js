@@ -14,7 +14,6 @@ const routerAuth = require("./src/routes/auth");
 const passport = require('passport');
 const localStrategy = require('passport-local').Strategy;
 const { Users, Product_in, Products, Product_out } = require("./src/models");
-const ProductInController = require('./src/controllers/ProductInController');
 const JWTstrategy = require('passport-jwt').Strategy;
 const ExtractJwt = require('passport-jwt').ExtractJwt;
 

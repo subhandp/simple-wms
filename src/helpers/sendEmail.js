@@ -24,17 +24,6 @@ class Email {
             }
         });
 
-        // const mailOptions = {
-        //     from: process.env.EMAIL_USERNAME,
-        //     to: dataEmail.email,
-        //     subject: subject,
-        //     html: this.emailTemplate(dataEmail),
-        //     attachments: [{
-        //         filename: filename,
-        //         content: fileContent
-        //     }]
-        // };
-
         let mailOptions = undefined;
         if (filename && fileContent) {
             mailOptions = {

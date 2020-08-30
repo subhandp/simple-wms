@@ -1,10 +1,6 @@
 require('dotenv').config()
 const { Product_out, Products } = require("../models");
-const passport = require('passport');
-const jwt = require('jsonwebtoken');
-const nodemailer = require("nodemailer");
 const Email = require("./../helpers/sendEmail");
-const Webpage = require("./../helpers/pdf");
 const Bull = require('bull');
 const sendMailQueue = new Bull('sendMail');
 
@@ -108,6 +104,7 @@ class ProductOutController {
 
 
                     if (newStock <= 0) {
+
                         const dataEmail = {
                             lastProductOut: req.body.total,
                             totalProductBeforeOut: product.stock,
