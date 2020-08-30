@@ -1,4 +1,12 @@
+require('dotenv').config()
 const { Product_out, Products } = require("../models");
+const passport = require('passport');
+const jwt = require('jsonwebtoken');
+const nodemailer = require("nodemailer");
+const Email = require("./../helpers/sendEmail");
+const Webpage = require("./../helpers/pdf");
+const Bull = require('bull');
+const sendMailQueue = new Bull('sendMail');
 
 const response = {
     data: [],
@@ -97,6 +105,33 @@ class ProductOutController {
                     throw Error('not enough product for out')
                 } else {
                     let newStock = req.body.total - product.stock;
+
+
+                    if (newStock <= 0) {
+                        const dataEmail = {
+                            lastProductOut: req.body.total,
+                            totalProductBeforeOut: product.stock,
+                            productName: product.name,
+                            productId: product.id,
+                            email: process.env.EMAIL_USERNAME
+                        };
+
+                        const options = {
+                            delay: 1000,
+                        };
+                        sendMailQueue.add(dataEmail, options);
+                        sendMailQueue.process(async(job) => {
+                            return await Email.sendEmail(
+                                dataEmail,
+                                "Hallo, Your product is empty here!"
+                            );
+                        }).then((val) => {
+                            console.log(val)
+                        })
+                    }
+
+
+
                     await Products.update({ stock: newStock }, {
                         where: {
                             id: req.body.ProductsId

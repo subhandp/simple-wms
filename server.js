@@ -16,9 +16,56 @@ const localStrategy = require('passport-local').Strategy;
 const { Users, Product_in, Products, Product_out } = require("./src/models");
 const ProductInController = require('./src/controllers/ProductInController');
 const JWTstrategy = require('passport-jwt').Strategy;
-const ExtractJWT = require('passport-jwt').ExtractJwt;
+const ExtractJwt = require('passport-jwt').ExtractJwt;
 
 const Webpage = require("./src/helpers/pdf");
+const Bull = require('bull');
+const sendMailQueue = new Bull('sendMail');
+const Email = require("./src/helpers/sendEmail");
+
+var cron = require('node-cron');
+
+const reportMonth = async() => {
+    const resultIn = await Product_in.findAll();
+    let totalProductIn = 0;
+    let totalProductOut = 0;
+    resultIn.map((val) => {
+        totalProductIn += val.total;
+    })
+    const resultOut = await Product_out.findAll();
+    resultOut.map((val) => {
+        totalProductOut += val.total;
+    })
+
+    console.log('product in', totalProductIn);
+    console.log('product out', totalProductOut);
+}
+
+reportMonth();
+
+const url = `http://localhost:3000/api/v1/print/products-in-out`;
+
+cron.schedule('5 * * * * *', async() => {
+    const dataEmail = {
+        email: process.env.EMAIL_USERNAME
+    };
+    const options = {
+        delay: 1000,
+    };
+    sendMailQueue.add(dataEmail, options);
+    sendMailQueue.process(async(job) => {
+        return await Email.sendEmail(
+            dataEmail,
+            "Hai Sir this your Product Month Report!",
+            'product-month-report.pdf',
+            await Webpage.generatePDF(url)
+        );
+    }).then((val) => {
+        console.log(val)
+    })
+
+
+});
 
 app.set('views', __dirname + '/src/views');
 app.set("view engine", "ejs");
@@ -33,11 +80,30 @@ app.use(bodyParser.json());
 
 const baseUrl = "/api/v1";
 
-app.use(baseUrl + "/user", routerUsers);
-app.use(baseUrl + "/products", routerProducts);
-app.use(baseUrl + "/in", routerProductIn);
-app.use(baseUrl + "/out", routerProductOut);
+app.use(baseUrl + "/user", passport.authenticate('jwt', { session: false }), routerUsers);
+app.use(baseUrl + "/products", passport.authenticate('jwt', { session: false }), routerProducts);
+app.use(baseUrl + "/in", passport.authenticate('jwt', { session: false }), routerProductIn);
+app.use(baseUrl + "/out", passport.authenticate('jwt', { session: false }), routerProductOut);
 app.use(baseUrl + "/auth", routerAuth);
+app.get(baseUrl + "/print/products-in-out", async(req, res) => {
+
+    const d = new Date();
+    const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+
+    const resultIn = await Product_in.findAll();
+    let totalProductIn = 0;
+    let totalProductOut = 0;
+    resultIn.map((val) => {
+        totalProductIn += val.total;
+    })
+    const resultOut = await Product_out.findAll();
+    resultOut.map((val) => {
+        totalProductOut += val.total;
+    })
+
+    res.render("report-product-in-out-month", { reports: { totalProductIn: totalProductIn, totalProductOut: totalProductOut, dateNow: months[d.getMonth()] } });
+});
+
 app.get(baseUrl + "/print/:type/:id", async(req, res) => {
     let type = '';
     if (req.params.type == 'in') {
@@ -81,12 +147,14 @@ passport.use('login', new localStrategy(
     }
 ));
 
-passport.use(new JWTstrategy({
-    secretOrKey: process.env.PRIVATE_KEY,
-    jwtFromRequest: ExtractJWT.fromHeader('Authorization')
-}, async(token, done) => {
+const options = {
+    jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
+    secretOrKey: process.env.PRIVATE_KEY
+};
+
+passport.use(new JWTstrategy(options, async(token, done) => {
     try {
-        return done(null, token.user);
+        return await done(null, token.user);
     } catch (error) {
         done(error);
     }
